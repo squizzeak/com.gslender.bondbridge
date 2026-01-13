@@ -18,10 +18,10 @@ class FireplaceDevice extends BondDevice {
 
     this.registerCapabilityListener("onoff", async (value) => {
       if (value) {
-        await this.runBondAction("TurnFpFanOn", {});
+        await this.runBondAction("TurnOn", {});
       } else {
-        await this.runBondAction("TurnFpFanOff", {});
-      }   
+        await this.runBondAction("TurnOff", {});
+      }
     });
 
     this.registerCapabilityListener("fpfan_mode", async (value) => {
@@ -47,7 +47,9 @@ class FireplaceDevice extends BondDevice {
   }
 
   async updateCapabilityValues(state) {
-    if (this.hasProperties(state.data,["fpfan_speed","fpfan_mode"])) {
+    // Check if this is a fireplace with fan controls (has fpfan_speed)
+    if (this.hasProperties(state.data, ["fpfan_speed"])) {
+      // Fireplace with fan controls
       const nextPowerState = state.data.fpfan_power === 1;
       const prevPowerState = this.getCapabilityValue('onoff');
       await this.safeUpdateCapabilityValue('onoff', nextPowerState);
@@ -63,6 +65,22 @@ class FireplaceDevice extends BondDevice {
       } else if (state.data.fpfan_power === 0) {
         mode = 'off';
       }
+      const prevMode = this.getCapabilityValue('fpfan_mode');
+      await this.safeUpdateCapabilityValue('fpfan_mode', mode);
+      // if (prevMode !== mode) {
+      //   this.driver?.triggerFireplaceFanModeChanged?.(this, { fpfan_mode: mode });
+      // }
+    } else if (this.hasProperties(state.data, ["power"])) {
+      // Basic fireplace (just on/off, no fan controls)
+      const nextPowerState = state.data.power === 1;
+      const prevPowerState = this.getCapabilityValue('onoff');
+      await this.safeUpdateCapabilityValue('onoff', nextPowerState);
+      // if (prevPowerState !== nextPowerState) {
+      //   this.driver?.triggerFireplaceOnOffChanged?.(this, { onoff: nextPowerState });
+      // }
+
+      // Update fan mode based on power state
+      const mode = nextPowerState ? 'low' : 'off';
       const prevMode = this.getCapabilityValue('fpfan_mode');
       await this.safeUpdateCapabilityValue('fpfan_mode', mode);
       // if (prevMode !== mode) {
